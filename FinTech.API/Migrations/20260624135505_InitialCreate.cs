@@ -119,8 +119,8 @@ namespace FinTech.API.Migrations
                 columns: new[] { "Id", "CreatedAt", "Email", "MonthlyIncome", "Name", "PasswordHash" },
                 values: new object[,]
                 {
-                    { new Guid("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "juan@email.com", 5000.00m, "Juan Pérez", "1234" },
-                    { new Guid("b2c3d4e5-f6a7-8901-bcde-f12345678901"), new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "maria@email.com", 8000.00m, "María García", "1234" }
+                    { new Guid("a1b2c3d4-e5f6-7890-abcd-ef1234567890"), new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "juan@email.com", 5000.00m, "Juan Pérez", "11223344" },
+                    { new Guid("b2c3d4e5-f6a7-8901-bcde-f12345678901"), new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "maria@email.com", 8000.00m, "María García", "11223344" }
                 });
 
             migrationBuilder.InsertData(

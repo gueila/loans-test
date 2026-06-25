@@ -385,7 +385,7 @@ namespace FinTech.API.Migrations
                             Email = "juan@email.com",
                             MonthlyIncome = 5000.00m,
                             Name = "Juan Pérez",
-                            PasswordHash = "1234"
+                            PasswordHash = "11223344"
                         },
                         new
                         {
@@ -394,7 +394,7 @@ namespace FinTech.API.Migrations
                             Email = "maria@email.com",
                             MonthlyIncome = 8000.00m,
                             Name = "María García",
-                            PasswordHash = "1234"
+                            PasswordHash = "11223344"
                         });
                 });
 
