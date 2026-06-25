@@ -117,3 +117,14 @@ variable "jwt_audience" {
   type        = string
   default     = "FinTech.App"
 }
+
+variable "github_owner" {
+  description = "GitHub repository owner (user or organization)"
+  type        = string
+}
+
+variable "github_repo" {
+  description = "GitHub repository name"
+  type        = string
+  default     = "prueba-net"
+}
