@@ -61,6 +61,11 @@ jobs:
           # Reset state
           aws s3 rm s3://fintech-terraform-state-416772749566/dev/terraform.tfstate 2>/dev/null || true
 
+          # Delete stale ECS service and cluster
+          aws ecs delete-service --cluster fintech-dev-cluster --service fintech-dev-service --force || true
+          aws ecs delete-cluster --cluster fintech-dev-cluster || true
+          sleep 5
+
           # Delete stale RDS instance and wait for completion
           aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot || true
           if aws rds describe-db-instances --db-instance-identifier fintech-dev-db >/dev/null 2>&1; then
