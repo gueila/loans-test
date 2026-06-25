@@ -57,11 +57,16 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
 
-      - name: Cleanup leftover resources from previous failed runs
+      - name: Cleanup resources from previous failed runs
         continue-on-error: true
         run: |
+          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params || true
+          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group || true
           aws secretsmanager delete-secret --secret-id fintech/dev/db-connection --force-delete-without-recovery || true
           aws secretsmanager delete-secret --secret-id fintech/dev/jwt --force-delete-without-recovery || true
+          aws ecr delete-repository --repository-name fintech-dev --force || true
+          aws logs delete-log-group --log-group-name /ecs/fintech-dev || true
+          aws ecs delete-cluster --cluster fintech-dev-cluster || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
