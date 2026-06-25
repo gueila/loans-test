@@ -151,10 +151,10 @@ FinTech.API/
 ├── Strategies/         → FixedInstallmentStrategy, DecreasingInstallmentStrategy + Factory
 ├── Repositories/       → Interfaces/ + Implementations/
 ├── Data/               → AppDbContext + Configurations EF
-├── Middleware/          → ExceptionMiddleware
-├── Validators/          → FluentValidation
+├── Middleware/          → ExceptionMiddleware 
+├── Validators/          → FluentValidation 
 ├── Migrations/          → Migraciones EF Core + Seed Data
-└── Utils/               → FinancialCalculator
+└── Utils/               → FinancialCalculator 
 ```
 
 ### Patrones de Diseño
@@ -179,7 +179,7 @@ FinTech.API/
 | PasswordHash | VARCHAR(200) | Hash de contraseña |
 | MonthlyIncome | DECIMAL(12,2) | Ingreso mensual |
 
-### Loans
+### Loans Prestamos
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | Id | UUID | PK |
@@ -257,7 +257,7 @@ PENDING → [APPROVED | REJECTED] → ACTIVE
 | Entity Framework Core | 10.0 |
 | PostgreSQL (Npgsql) | 10.0 |
 | Swashbuckle (Swagger) | 10.2 |
-| FluentValidation | 11.11 |
+| FluentValidation | 11.11 | 
 | JWT Bearer | 10.0 |
 | xUnit | (tests) |
 | Moq | (tests) |
