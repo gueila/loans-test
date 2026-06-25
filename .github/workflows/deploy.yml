@@ -63,90 +63,18 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
 
-      - name: Cleanup resources from previous failed runs
+      - name: Terraform Import existing parameter group
+        working-directory: ${{ env.TERRAFORM_DIR }}
         continue-on-error: true
-        timeout-minutes: 10
         run: |
-          # Delete ECS resources
-          aws ecs delete-service --cluster fintech-dev-cluster --service fintech-dev-service --force 2>/dev/null || true
-          sleep 10
-          aws ecs delete-cluster --cluster fintech-dev-cluster 2>/dev/null || true
-
-          # Delete RDS resources
-          aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot 2>/dev/null || true
-          sleep 30
-          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params 2>/dev/null || true
-          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group 2>/dev/null || true
-
-          # Delete secrets
-          aws secretsmanager delete-secret --secret-id fintech/dev/db-connection --force-delete-without-recovery 2>/dev/null || true
-          aws secretsmanager delete-secret --secret-id fintech/dev/jwt --force-delete-without-recovery 2>/dev/null || true
-
-          # Delete ECR
-          aws ecr delete-repository --repository-name fintech-dev --force 2>/dev/null || true
-
-          # Delete log group
-          aws logs delete-log-group --log-group-name /ecs/fintech-dev 2>/dev/null || true
-
-          # Delete ALB and target group
-          ALB_ARN=$(aws elbv2 describe-load-balancers --names fintech-dev-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null) || true
-          if [ -n "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
-            aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN" 2>/dev/null || true
-            sleep 10
-          fi
-          TG_ARN=$(aws elbv2 describe-target-groups --names fintech-dev-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null) || true
-          if [ -n "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
-            aws elbv2 delete-target-group --target-group-arn "$TG_ARN" 2>/dev/null || true
-          fi
-
-          # Delete FinTech VPCs (handle dependencies in order)
-          for vpc_id in $(aws ec2 describe-vpcs --filters "Name=tag:Project,Values=FinTech" --query 'Vpcs[].VpcId' --output text 2>/dev/null); do
-            echo "Cleaning up VPC: $vpc_id"
-
-            # Delete NAT gateways and wait for deletion
-            for ngw_id in $(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$vpc_id" --query 'NatGateways[].NatGatewayId' --output text 2>/dev/null); do
-              aws ec2 delete-nat-gateway --nat-gateway-id "$ngw_id" 2>/dev/null || true
-            done
-            sleep 10
-
-            # Release EIPs (by VpcId) - wait for NAT gateways to fully delete first
-            sleep 20
-            for alloc_id in $(aws ec2 describe-addresses --query "Addresses[?VpcId=='$vpc_id'].AllocationId" --output text 2>/dev/null); do
-              aws ec2 release-address --allocation-id "$alloc_id" 2>/dev/null || true
-            done
-          done
-
-          # Wait for NAT gateways to fully delete then release leaked EIPs
-          sleep 30
-          for alloc_id in $(aws ec2 describe-addresses --query 'Addresses[?!AssociationId].AllocationId' --output text 2>/dev/null); do
-            aws ec2 release-address --allocation-id "$alloc_id" 2>/dev/null || true
-          done
-
-            # Delete security groups (except default)
-            for sg_id in $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text 2>/dev/null); do
-              aws ec2 delete-security-group --group-id "$sg_id" 2>/dev/null || true
-            done
-
-            # Delete subnets
-            for subnet_id in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$vpc_id" --query 'Subnets[].SubnetId' --output text 2>/dev/null); do
-              aws ec2 delete-subnet --subnet-id "$subnet_id" 2>/dev/null || true
-            done
-
-            # Detach and delete internet gateways
-            for igw_id in $(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpc_id" --query 'InternetGateways[].InternetGatewayId' --output text 2>/dev/null); do
-              aws ec2 detach-internet-gateway --internet-gateway-id "$igw_id" --vpc-id "$vpc_id" 2>/dev/null || true
-              aws ec2 delete-internet-gateway --internet-gateway-id "$igw_id" 2>/dev/null || true
-            done
-
-            # Delete route tables (non-main)
-            for rt_id in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$vpc_id" --query 'RouteTables[?Associations[0].Main != `true`].RouteTableId' --output text 2>/dev/null); do
-              aws ec2 delete-route-table --route-table-id "$rt_id" 2>/dev/null || true
-            done
-
-            # Finally delete the VPC
-            aws ec2 delete-vpc --vpc-id "$vpc_id" 2>/dev/null || true
-            echo "Deleted VPC: $vpc_id"
-          done
+          terraform import \
+            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
+            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
+            aws_db_parameter_group.fintech fintech-dev-pg-params || true
+          terraform import \
+            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
+            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
+            aws_db_subnet_group.fintech fintech-dev-db-subnet-group || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
