@@ -8,6 +8,7 @@ API REST para simulación, solicitud y gestión de préstamos con soporte de tra
 
 - [.NET SDK 10.0+](https://dotnet.microsoft.com/download)
 - [PostgreSQL 16+](https://www.postgresql.org/download/)
+- Opcional: [Docker](https://www.docker.com/) (para PostgreSQL)
 
 ---
 
@@ -244,6 +245,192 @@ PENDING → [APPROVED | REJECTED] → ACTIVE
 
 - Cada transacción tiene un `IdempotencyKey` único
 - Si llega una segunda request con la misma key, se retorna la transacción original sin duplicar
+
+---
+
+## 🐳 Docker
+
+### Dockerfile
+
+Multi-stage build para mantener la imagen final pequeña (~200MB).
+
+```dockerfile
+# FASE 1: Build — compila la aplicación
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY FinTech.API/FinTech.API.csproj .
+RUN dotnet restore                              # Restaura dependencias (cacheable)
+COPY . .
+RUN dotnet publish FinTech.API/FinTech.API.csproj -c Release -o /app
+
+# FASE 2: Runtime — solo lo necesario para ejecutar
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .                        # Copia solo el binario compilado
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "FinTech.API.dll"]
+```
+
+**Build local:**
+```bash
+docker build -t fintech-api .
+docker run -p 8080:8080 fintech-api
+# → http://localhost:8080/swagger
+```
+
+---
+
+## ☁️ Deploy AWS (ECS Fargate + RDS)
+
+### Infraestructura como Código (Terraform)
+
+```
+terraform/
+├── main.tf              → Provider AWS
+├── variables.tf         → 18 variables configurables
+├── outputs.tf           → ALB DNS, ECR URL, RDS endpoint
+├── networking.tf        → VPC, subnets (2 públicas + 2 privadas), NAT, security groups
+├── secrets.tf           → AWS Secrets Manager (db-connection + jwt)
+├── iam.tf               → Roles ECS execution + task
+├── rds.tf               → RDS PostgreSQL 16, t3.micro, 20GB gp3
+├── ecs.tf               → ECR, ECS Fargate 0.25vCPU/512MB, ALB, auto-scaling
+└── terraform.tfvars     → Variables por defecto
+```
+
+### Arquitectura AWS
+
+```
+Internet
+   │
+   ▼
+  ALB (Application Load Balancer) — puertos 80/443
+   │
+   ▼
+  ECS Fargate (contenedor .NET)
+   │                        │
+   ▼                        ▼
+  RDS PostgreSQL         Secrets Manager
+  (privada, sin         (db-connection, jwt)
+   acceso internet)
+```
+
+### Recursos creados
+
+| Recurso | Descripción |
+|---------|-------------|
+| **VPC** | 2 subnets públicas (ALB), 2 privadas (ECS + RDS) |
+| **Security Groups** | ALB (80/443 desde internet), ECS (solo desde ALB), RDS (5432 solo desde ECS) |
+| **RDS PostgreSQL 16** | t3.micro, 20GB gp3, backups 7 días, cifrado |
+| **Secrets Manager** | `fintech/{env}/db-connection` (connection string), `fintech/{env}/jwt` (key, issuer, audience) |
+| **ECR** | Repositorio privado de imágenes Docker |
+| **ECS Fargate** | 0.25 vCPU, 512MB RAM, auto-escalado (CPU > 70%, min 1 — max 3) |
+| **ALB** | Balanceador HTTP, health check en `/swagger/index.html` |
+| **CloudWatch Logs** | Logs del contenedor con retención de 14 días |
+
+### Secrets Management
+
+Los secrets se almacenan en **AWS Secrets Manager** y ECS los inyecta como variables de entorno automáticamente:
+
+```json
+// Secret: fintech/dev/db-connection
+"Host=fintech-db.xxx.us-east-1.rds.amazonaws.com;Port=5432;Database=fintech_db;Username=postgres;Password=xxx"
+
+// Secret: fintech/dev/jwt
+{
+  "key": "clave-segura-32-caracteres-minimo!",
+  "issuer": "FinTech.API",
+  "audience": "FinTech.App"
+}
+```
+
+### Deploy paso a paso
+
+```bash
+# 1️⃣  Variables sensibles (nunca en git)
+export TF_VAR_db_password="supersecreta"
+export TF_VAR_jwt_key="clave-jwt-de-32-caracteres-minimo"
+
+# 2️⃣  Crear infraestructura
+cd terraform
+terraform init
+terraform plan          # Revisar qué va a crear
+terraform apply         # Aprobar con "yes"
+
+# 3️⃣  Buildear imagen Docker y pushear a ECR
+aws ecr get-login-password --region us-east-1 | docker login \
+  --username AWS --password-stdin $(terraform output -raw ecr_repository_url)
+
+docker build -t fintech-api ../
+docker tag fintech-api:latest $(terraform output -raw ecr_repository_url):latest
+docker push $(terraform output -raw ecr_repository_url):latest
+
+# 4️⃣  Forzar nuevo deploy en ECS
+aws ecs update-service \
+  --cluster fintech-dev-cluster \
+  --service fintech-dev-service \
+  --force-new-deployment
+
+# 5️⃣  Verificar
+echo "API disponible en: http://$(terraform output -raw alb_dns_name)/swagger"
+```
+
+### CI/CD (GitHub Actions — opcional)
+
+```yaml
+name: Deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0'
+
+      - name: Run tests
+        run: dotnet test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        run: aws ecr get-login-password | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY }}
+
+      - name: Build and push
+        run: |
+          docker build -t fintech-api .
+          docker tag fintech-api:latest ${{ secrets.ECR_REPOSITORY }}:latest
+          docker push ${{ secrets.ECR_REPOSITORY }}:latest
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service --cluster fintech-dev-cluster \
+            --service fintech-dev-service --force-new-deployment
+```
+
+### Costos estimados (dev)
+
+| Servicio | Costo mensual |
+|----------|--------------|
+| RDS db.t3.micro | ~$15 |
+| ECS Fargate 0.25vCPU + 0.5GB | ~$10 |
+| ALB | ~$16 |
+| Secrets Manager (2 secrets) | ~$1 |
+| **Total** | **~$42/mes** |
+
+---
 
 ## 🔧 Tecnologías
 
