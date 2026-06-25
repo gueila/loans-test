@@ -102,10 +102,16 @@ jobs:
               aws ec2 delete-nat-gateway --nat-gateway-id "$ngw_id" 2>/dev/null || true
             done
 
-            # Release EIPs
+            # Release EIPs (by VpcId)
             for alloc_id in $(aws ec2 describe-addresses --query "Addresses[?VpcId=='$vpc_id'].AllocationId" --output text 2>/dev/null); do
               aws ec2 release-address --allocation-id "$alloc_id" 2>/dev/null || true
             done
+          done
+
+          # Release any remaining unassociated EIPs (leaked from previous runs)
+          for alloc_id in $(aws ec2 describe-addresses --query 'Addresses[?!AssociationId].AllocationId' --output text 2>/dev/null); do
+            aws ec2 release-address --allocation-id "$alloc_id" 2>/dev/null || true
+          done
 
             # Delete security groups (except default)
             for sg_id in $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" --query 'SecurityGroups[?GroupName!=`default`].GroupId' --output text 2>/dev/null); do
