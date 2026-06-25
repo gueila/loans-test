@@ -57,6 +57,15 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
 
+      - name: Terraform Import (adopt resources from partial runs)
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        continue-on-error: true
+        run: |
+          terraform import aws_secretsmanager_secret.db_connection fintech/dev/db-connection || true
+          terraform import aws_secretsmanager_secret.jwt fintech/dev/jwt || true
+          terraform import aws_ecr_repository.fintech fintech-dev || true
+          terraform import aws_cloudwatch_log_group.fintech /ecs/fintech-dev || true
+
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform apply -auto-approve
