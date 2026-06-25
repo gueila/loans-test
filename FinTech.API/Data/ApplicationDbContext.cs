@@ -38,7 +38,7 @@ public class ApplicationDbContext : DbContext
                 Id = userId1,
                 Name = "Juan Pérez",
                 Email = "juan@email.com",
-                PasswordHash = "$2a$11$placeholder",
+                PasswordHash = "1234",
                 MonthlyIncome = 5000.00m,
                 CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -47,7 +47,7 @@ public class ApplicationDbContext : DbContext
                 Id = userId2,
                 Name = "María García",
                 Email = "maria@email.com",
-                PasswordHash = "$2a$11$placeholder",
+                PasswordHash = "1234",
                 MonthlyIncome = 8000.00m,
                 CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
