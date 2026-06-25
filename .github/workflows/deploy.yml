@@ -63,18 +63,12 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
 
-      - name: Terraform Import existing parameter group
-        working-directory: ${{ env.TERRAFORM_DIR }}
+      - name: Remove stale RDS resources from previous runs
         continue-on-error: true
         run: |
-          terraform import \
-            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
-            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
-            aws_db_parameter_group.fintech fintech-dev-pg-params || true
-          terraform import \
-            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
-            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
-            aws_db_subnet_group.fintech fintech-dev-db-subnet-group || true
+          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params 2>/dev/null || true
+          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group 2>/dev/null || true
+          aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot 2>/dev/null || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
