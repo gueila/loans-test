@@ -61,10 +61,22 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
         continue-on-error: true
         run: |
-          terraform import aws_secretsmanager_secret.db_connection fintech/dev/db-connection || true
-          terraform import aws_secretsmanager_secret.jwt fintech/dev/jwt || true
-          terraform import aws_ecr_repository.fintech fintech-dev || true
-          terraform import aws_cloudwatch_log_group.fintech /ecs/fintech-dev || true
+          terraform import \
+            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
+            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
+            aws_secretsmanager_secret.db_connection fintech/dev/db-connection || true
+          terraform import \
+            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
+            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
+            aws_secretsmanager_secret.jwt fintech/dev/jwt || true
+          terraform import \
+            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
+            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
+            aws_ecr_repository.fintech fintech-dev || true
+          terraform import \
+            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
+            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
+            aws_cloudwatch_log_group.fintech /ecs/fintech-dev || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
