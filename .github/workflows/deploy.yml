@@ -54,6 +54,14 @@ jobs:
           aws s3api create-bucket --bucket fintech-terraform-state-416772749566 --region ${{ env.AWS_REGION }} 2>/dev/null || true
           aws s3api put-bucket-versioning --bucket fintech-terraform-state-416772749566 --versioning-configuration Status=Enabled 2>/dev/null || true
 
+      - name: Reset Terraform state and clean stale resources
+        continue-on-error: true
+        run: |
+          aws s3 rm s3://fintech-terraform-state-416772749566/dev/terraform.tfstate 2>/dev/null || true
+          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params 2>/dev/null || true
+          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group 2>/dev/null || true
+          aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot 2>/dev/null || true
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -62,13 +70,6 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
-
-      - name: Remove stale RDS resources from previous runs
-        continue-on-error: true
-        run: |
-          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params 2>/dev/null || true
-          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group 2>/dev/null || true
-          aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot 2>/dev/null || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
