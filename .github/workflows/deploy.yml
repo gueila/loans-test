@@ -97,18 +97,21 @@ jobs:
           for vpc_id in $(aws ec2 describe-vpcs --filters "Name=tag:Project,Values=FinTech" --query 'Vpcs[].VpcId' --output text 2>/dev/null); do
             echo "Cleaning up VPC: $vpc_id"
 
-            # Delete NAT gateways
+            # Delete NAT gateways and wait for deletion
             for ngw_id in $(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$vpc_id" --query 'NatGateways[].NatGatewayId' --output text 2>/dev/null); do
               aws ec2 delete-nat-gateway --nat-gateway-id "$ngw_id" 2>/dev/null || true
             done
+            sleep 10
 
-            # Release EIPs (by VpcId)
+            # Release EIPs (by VpcId) - wait for NAT gateways to fully delete first
+            sleep 20
             for alloc_id in $(aws ec2 describe-addresses --query "Addresses[?VpcId=='$vpc_id'].AllocationId" --output text 2>/dev/null); do
               aws ec2 release-address --allocation-id "$alloc_id" 2>/dev/null || true
             done
           done
 
-          # Release any remaining unassociated EIPs (leaked from previous runs)
+          # Wait for NAT gateways to fully delete then release leaked EIPs
+          sleep 30
           for alloc_id in $(aws ec2 describe-addresses --query 'Addresses[?!AssociationId].AllocationId' --output text 2>/dev/null); do
             aws ec2 release-address --allocation-id "$alloc_id" 2>/dev/null || true
           done
