@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using FinTech.API.DTOs.Requests;
 using FinTech.API.DTOs.Responses;
@@ -40,11 +41,16 @@ public class AuthService : IAuthService
         };
     }
 
+    private static SymmetricSecurityKey GetSigningKey(IConfiguration config)
+    {
+        var secret = config["Jwt:Key"] ?? "SuperSecretKeyForDevelopment12345678!";
+        var keyBytes = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), new byte[32]);
+        return new SymmetricSecurityKey(keyBytes);
+    }
+
     private string GenerateJwtToken(Models.User user)
     {
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "SuperSecretKeyForDevelopment12345678!"));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var credentials = new SigningCredentials(GetSigningKey(_configuration), SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
