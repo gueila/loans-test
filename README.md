@@ -2,7 +2,7 @@
 
 API REST para simulación, solicitud y gestión de préstamos con soporte de transacciones idempotentes, desarrollada en **.NET 10** con **PostgreSQL**.
 
----
+- [Link de swagger](http://fintech-dev-alb-441114658.us-east-1.elb.amazonaws.com/swagger/index.html)
 
 ## 📋 Requisitos
 
@@ -95,23 +95,23 @@ Para usar en Swagger, haz clic en **Authorize** e ingresa: `Bearer {token}`
 
 ### Endpoints de Préstamos
 
-| Método | Endpoint | Auth | Descripción |
-|--------|----------|------|-------------|
-| `POST` | `/api/loans/simulate` | ❌ | Simular préstamo (retorna cronograma sin guardar) |
-| `POST` | `/api/loans` | ✅ | Crear solicitud de préstamo |
-| `GET` | `/api/loans?userId=` | ✅ | Listar préstamos |
-| `GET` | `/api/loans/{id}` | ✅ | Obtener préstamo por ID |
-| `GET` | `/api/loans/{id}/schedule` | ✅ | Obtener cronograma de pagos |
-| `PATCH` | `/api/loans/{id}/approve` | ✅ | Aprobar préstamo |
-| `PATCH` | `/api/loans/{id}/reject` | ✅ | Rechazar préstamo |
+| Método  | Endpoint                   | Auth | Descripción                                       |
+| ------- | -------------------------- | ---- | ------------------------------------------------- |
+| `POST`  | `/api/loans/simulate`      | ❌   | Simular préstamo (retorna cronograma sin guardar) |
+| `POST`  | `/api/loans`               | ✅   | Crear solicitud de préstamo                       |
+| `GET`   | `/api/loans?userId=`       | ✅   | Listar préstamos                                  |
+| `GET`   | `/api/loans/{id}`          | ✅   | Obtener préstamo por ID                           |
+| `GET`   | `/api/loans/{id}/schedule` | ✅   | Obtener cronograma de pagos                       |
+| `PATCH` | `/api/loans/{id}/approve`  | ✅   | Aprobar préstamo                                  |
+| `PATCH` | `/api/loans/{id}/reject`   | ✅   | Rechazar préstamo                                 |
 
 ### Endpoints de Transacciones
 
-| Método | Endpoint | Auth | Descripción |
-|--------|----------|------|-------------|
-| `POST` | `/api/transactions` | ✅ | Crear transacción (con idempotency_key) |
-| `GET` | `/api/transactions?type=&status=` | ✅ | Listar transacciones |
-| `GET` | `/api/transactions/{id}` | ✅ | Obtener transacción por ID |
+| Método | Endpoint                          | Auth | Descripción                             |
+| ------ | --------------------------------- | ---- | --------------------------------------- |
+| `POST` | `/api/transactions`               | ✅   | Crear transacción (con idempotency_key) |
+| `GET`  | `/api/transactions?type=&status=` | ✅   | Listar transacciones                    |
+| `GET`  | `/api/transactions/{id}`          | ✅   | Obtener transacción por ID              |
 
 ---
 
@@ -124,6 +124,7 @@ dotnet test
 ### Tests incluidos (18 tests)
 
 **Unitarios:**
+
 - Cálculo de cuota fija (sistema francés)
 - Cálculo de cuota decreciente (sistema alemán)
 - Generación de cronograma de pagos
@@ -133,6 +134,7 @@ dotnet test
 - Manejo de fechas fin de mes
 
 **Integración:**
+
 - Deduplicación de transacciones con mismo idempotency_key
 - Creación de transacciones con diferentes keys
 
@@ -150,68 +152,72 @@ FinTech.API/
 ├── Strategies/         → FixedInstallmentStrategy, DecreasingInstallmentStrategy + Factory
 ├── Repositories/       → Interfaces/ + Implementations/
 ├── Data/               → AppDbContext + Configurations EF
-├── Middleware/          → ExceptionMiddleware 
-├── Validators/          → FluentValidation 
+├── Middleware/          → ExceptionMiddleware
+├── Validators/          → FluentValidation
 ├── Migrations/          → Migraciones EF Core + Seed Data
-└── Utils/               → FinancialCalculator 
+└── Utils/               → FinancialCalculator
 ```
 
 ### Patrones de Diseño
 
-| Patrón | Implementación |
-|--------|---------------|
-| **Repository** | `Repositories/Interfaces/` → `Repositories/Implementations/` |
-| **Strategy** | `Strategies/` → `FixedInstallmentStrategy`, `DecreasingInstallmentStrategy` |
-| **Factory** | `LoanCalculationFactory` para crear la estrategia según el tipo de préstamo |
-| **Middleware** | `ExceptionMiddleware` para manejo global de errores |
+| Patrón         | Implementación                                                              |
+| -------------- | --------------------------------------------------------------------------- |
+| **Repository** | `Repositories/Interfaces/` → `Repositories/Implementations/`                |
+| **Strategy**   | `Strategies/` → `FixedInstallmentStrategy`, `DecreasingInstallmentStrategy` |
+| **Factory**    | `LoanCalculationFactory` para crear la estrategia según el tipo de préstamo |
+| **Middleware** | `ExceptionMiddleware` para manejo global de errores                         |
 
 ---
 
 ## 🗄️ Modelo de Datos
 
 ### Users
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| Id | UUID | PK |
-| Name | VARCHAR(100) | Nombre completo |
-| Email | VARCHAR(150) | Email (único) |
-| PasswordHash | VARCHAR(200) | Hash de contraseña |
-| MonthlyIncome | DECIMAL(12,2) | Ingreso mensual |
+
+| Campo         | Tipo          | Descripción        |
+| ------------- | ------------- | ------------------ |
+| Id            | UUID          | PK                 |
+| Name          | VARCHAR(100)  | Nombre completo    |
+| Email         | VARCHAR(150)  | Email (único)      |
+| PasswordHash  | VARCHAR(200)  | Hash de contraseña |
+| MonthlyIncome | DECIMAL(12,2) | Ingreso mensual    |
 
 ### Loans Prestamos
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| Id | UUID | PK |
-| UserId | UUID | FK → Users |
-| Amount | DECIMAL(12,2) | Monto ($500 - $50,000) |
-| Term | INT | Plazo en meses (6 - 60) |
-| InterestRate | DECIMAL(5,4) | TEA (18% - 35%) |
-| LoanType | VARCHAR(20) | Fixed / Decreasing |
-| Status | VARCHAR(20) | Pending / Approved / Rejected / Active |
+
+| Campo        | Tipo          | Descripción                            |
+| ------------ | ------------- | -------------------------------------- |
+| Id           | UUID          | PK                                     |
+| UserId       | UUID          | FK → Users                             |
+| Amount       | DECIMAL(12,2) | Monto ($500 - $50,000)                 |
+| Term         | INT           | Plazo en meses (6 - 60)                |
+| InterestRate | DECIMAL(5,4)  | TEA (18% - 35%)                        |
+| LoanType     | VARCHAR(20)   | Fixed / Decreasing                     |
+| Status       | VARCHAR(20)   | Pending / Approved / Rejected / Active |
 
 ### PaymentSchedules
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| Id | UUID | PK |
-| LoanId | UUID | FK → Loans (CASCADE) |
-| PaymentNumber | INT | Número de cuota |
-| DueDate | DATE | Fecha de vencimiento |
-| TotalPayment | DECIMAL(12,2) | Cuota total |
-| Principal | DECIMAL(12,2) | Amortización capital |
-| Interest | DECIMAL(12,2) | Interés |
-| RemainingBalance | DECIMAL(12,2) | Saldo pendiente |
-| Status | VARCHAR(20) | Pending / Paid |
+
+| Campo            | Tipo          | Descripción          |
+| ---------------- | ------------- | -------------------- |
+| Id               | UUID          | PK                   |
+| LoanId           | UUID          | FK → Loans (CASCADE) |
+| PaymentNumber    | INT           | Número de cuota      |
+| DueDate          | DATE          | Fecha de vencimiento |
+| TotalPayment     | DECIMAL(12,2) | Cuota total          |
+| Principal        | DECIMAL(12,2) | Amortización capital |
+| Interest         | DECIMAL(12,2) | Interés              |
+| RemainingBalance | DECIMAL(12,2) | Saldo pendiente      |
+| Status           | VARCHAR(20)   | Pending / Paid       |
 
 ### Transactions
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| Id | UUID | PK |
-| IdempotencyKey | VARCHAR(100) | **Unique Index** — garantiza idempotencia |
-| Type | VARCHAR(20) | Disbursement / Payment / Transfer |
-| Amount | DECIMAL(12,2) | Monto |
-| Status | VARCHAR(20) | Pending / Completed / Failed |
-| LoanId | UUID | FK → Loans (nullable) |
-| UserId | UUID | FK → Users |
+
+| Campo          | Tipo          | Descripción                               |
+| -------------- | ------------- | ----------------------------------------- |
+| Id             | UUID          | PK                                        |
+| IdempotencyKey | VARCHAR(100)  | **Unique Index** — garantiza idempotencia |
+| Type           | VARCHAR(20)   | Disbursement / Payment / Transfer         |
+| Amount         | DECIMAL(12,2) | Monto                                     |
+| Status         | VARCHAR(20)   | Pending / Completed / Failed              |
+| LoanId         | UUID          | FK → Loans (nullable)                     |
+| UserId         | UUID          | FK → Users                                |
 
 ---
 
@@ -247,18 +253,18 @@ PENDING → [APPROVED | REJECTED] → ACTIVE
 
 ## 🔧 Tecnologías
 
-| Tecnología | Versión |
-|------------|---------|
-| .NET | 10.0 |
-| ASP.NET Core | 10.0 |
-| Entity Framework Core | 10.0 |
-| PostgreSQL (Npgsql) | 10.0 |
-| Swashbuckle (Swagger) | 10.2 |
-| FluentValidation | 11.11 | 
-| JWT Bearer | 10.0 |
-| xUnit | (tests) |
-| Moq | (tests) |
-| FluentAssertions | (tests) |
+| Tecnología            | Versión |
+| --------------------- | ------- |
+| .NET                  | 10.0    |
+| ASP.NET Core          | 10.0    |
+| Entity Framework Core | 10.0    |
+| PostgreSQL (Npgsql)   | 10.0    |
+| Swashbuckle (Swagger) | 10.2    |
+| FluentValidation      | 11.11   |
+| JWT Bearer            | 10.0    |
+| xUnit                 | (tests) |
+| Moq                   | (tests) |
+| FluentAssertions      | (tests) |
 
 ---
 
