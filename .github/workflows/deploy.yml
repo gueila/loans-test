@@ -62,13 +62,13 @@ jobs:
           aws s3 rm s3://fintech-terraform-state-416772749566/dev/terraform.tfstate 2>/dev/null || true
 
           # Delete stale RDS instance and wait for completion
-          aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot 2>/dev/null || true
-          if aws rds describe-db-instances --db-instance-identifier fintech-dev-db 2>/dev/null; then
+          aws rds delete-db-instance --db-instance-identifier fintech-dev-db --skip-final-snapshot || true
+          if aws rds describe-db-instances --db-instance-identifier fintech-dev-db >/dev/null 2>&1; then
             echo "Waiting for RDS instance deletion..."
-            aws rds wait db-instance-deleted --db-instance-identifier fintech-dev-db 2>/dev/null || true
+            aws rds wait db-instance-deleted --db-instance-identifier fintech-dev-db || true
           fi
-          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params 2>/dev/null || true
-          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group 2>/dev/null || true
+          aws rds delete-db-parameter-group --db-parameter-group-name fintech-dev-pg-params || true
+          aws rds delete-db-subnet-group --db-subnet-group-name fintech-dev-db-subnet-group || true
 
           # Delete stale ECR, secrets, log group
           aws ecr delete-repository --repository-name fintech-dev --force 2>/dev/null || true
