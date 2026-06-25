@@ -78,7 +78,15 @@ jobs:
             aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN" 2>/dev/null || true
           fi
 
-          # Delete stale target group
+          # Delete stale IAM roles (detach policies first)
+          aws iam detach-role-policy --role-name fintech-dev-ecs-execution-role --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
+          aws iam detach-role-policy --role-name fintech-dev-ecs-execution-role --policy-arn arn:aws:iam::416772749566:policy/fintech-dev-ecs-secrets-policy 2>/dev/null || true
+          aws iam delete-role --role-name fintech-dev-ecs-execution-role 2>/dev/null || true
+          aws iam delete-role --role-name fintech-dev-ecs-task-role 2>/dev/null || true
+          aws iam delete-policy --policy-arn arn:aws:iam::416772749566:policy/fintech-dev-ecs-secrets-policy 2>/dev/null || true
+
+          # Delete stale target group (after ALB deletion)
+          sleep 5
           TG_ARN=$(aws elbv2 describe-target-groups --names fintech-dev-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null) || true
           if [ -n "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
             aws elbv2 delete-target-group --target-group-arn "$TG_ARN" 2>/dev/null || true
