@@ -57,26 +57,11 @@ jobs:
         working-directory: ${{ env.TERRAFORM_DIR }}
         run: terraform init
 
-      - name: Terraform Import (adopt resources from partial runs)
-        working-directory: ${{ env.TERRAFORM_DIR }}
+      - name: Cleanup leftover resources from previous failed runs
         continue-on-error: true
         run: |
-          terraform import \
-            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
-            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
-            aws_secretsmanager_secret.db_connection fintech/dev/db-connection || true
-          terraform import \
-            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
-            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
-            aws_secretsmanager_secret.jwt fintech/dev/jwt || true
-          terraform import \
-            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
-            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
-            aws_ecr_repository.fintech fintech-dev || true
-          terraform import \
-            -var="db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" \
-            -var="jwt_key=${{ secrets.TF_VAR_JWT_KEY }}" \
-            aws_cloudwatch_log_group.fintech /ecs/fintech-dev || true
+          aws secretsmanager delete-secret --secret-id fintech/dev/db-connection --force-delete-without-recovery || true
+          aws secretsmanager delete-secret --secret-id fintech/dev/jwt --force-delete-without-recovery || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TERRAFORM_DIR }}
