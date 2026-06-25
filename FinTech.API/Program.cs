@@ -89,11 +89,11 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
+   .AllowAnonymous();
 
 app.UseAuthentication();
 app.UseAuthorization();

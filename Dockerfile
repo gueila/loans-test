@@ -1,8 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY FinTech.API/FinTech.API.csproj .
-RUN dotnet restore
+COPY FinTech.API/FinTech.API.csproj FinTech.API/
+RUN dotnet restore FinTech.API/FinTech.API.csproj
 
 COPY . .
 RUN dotnet publish FinTech.API/FinTech.API.csproj -c Release -o /app
